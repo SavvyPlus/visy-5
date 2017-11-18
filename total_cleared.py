@@ -1,7 +1,7 @@
 import boto3
 
 from datetime import datetime
-s3 = boto3.clien('s3')
+s3 = boto3.client('s3')
 cloudwatch = boto3.client('cloudwatch', region_name='ap-southeast-2')
 
 total_cleared_file_prefix = 'SITHE_DISPATCHIS_'
@@ -27,7 +27,7 @@ def publish_total_cleared_delta(total_cleared, initial_mw, dt):
 
     delta = total_cleared - initial_mw
 
-    cloudwatch.put_metric_date(
+    cloudwatch.put_metric_data(
         Namespace='visy',
         MetricData=[
             {
@@ -35,9 +35,11 @@ def publish_total_cleared_delta(total_cleared, initial_mw, dt):
                 'Dimensions': [
                     {
                         'Name':'value',
-                        'Value': delta
+                        'Value': str(delta)
                     }
-                ]
+                ],
+                'Timestamp': dt,
+                'Value': str(delta)
             }
         ]
     )
@@ -58,21 +60,41 @@ def process_file(filename):
         #D,DISPATCH,OFFERTRK,1,"2017/10/26 00:30:00",SITHE01,ENERGY,"2017/08/01 00:00:00","2017/08/01 02:22:18","2017/10/26 00:25:05"
         #C,"END OF REPORT",6
 
+        initial_mw = None
+        total_cleared = None
         lines = data.splitlines()
         for l in lines:
+            print(l)
             if l.startswith('D,DISPATCH,UNIT_SOLUTION'):
-                fields.split(",")
+                print("here")
+                fields = l.split(",")
+                print(fields[13])
+                print(fields[14])
                 date_str = fields[4].replace('"', '')
+                #this is the correct code, but sample files
                 #dt = datetime.strptime(date_str, '%Y/%m/%d %H:%M:%S')
                 dt = datetime.now()
 
                 initial_mw = int(fields[13])
                 total_cleared = int(fields[14])
 
-        publish_total_cleared_delta(total_cleared, initial_mw, dt)
+        if initial_mw >=0 and total_cleared >=0:
+            publish_total_cleared_delta(total_cleared, initial_mw, dt)
+        else:
+            print(initial_mw)
+            print(total_cleared)
+            print("unable to parse initial_mw or total_cleared for %s" % (filename,))
+            move_file("foamdino-test", "%s/%s" % (processing_bucket, filename), "foamdino-test", "%s/%s" % (failed_bucket, filename))
+            return
 
     except Exception as e:
         print(e)
+        print("moving to failed bucket for checking %s" % (filename,))
+        move_file("foamdino-test", "%s/%s" % (processing_bucket, filename), "foamdino-test", "%s/%s" % (failed_bucket, filename))
+        return
+
+
+    move_file("foamdino-test", "%s/%s" % (processing_bucket, filename), "foamdino-test", "%s/%s" % (processed_bucket, filename))
 
 
 # main method for testing outside of lambda environment
