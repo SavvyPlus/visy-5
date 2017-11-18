@@ -30,6 +30,7 @@ def move_file(src_bucket, src_key, dst_bucket, dst_key):
     s3.copy({'Bucket': src_bucket, 'Key': src_key}, dst_bucket, dst_key)
     s3.delete_object(Bucket=src_bucket, Key=src_key)
 
+
 def publish_conformance_data(conformance_val, conformance_dt, conformance, message):
     """
     publish val to cloudwatch
@@ -73,7 +74,6 @@ def process_file(filename):
         lines = data.splitlines()
         for l in lines:
             if l.startswith('D'):
-                print(l)
                 fields = l.split(',')
                 conformance = fields[18]
                 message = fields[19]
@@ -92,6 +92,12 @@ def process_file(filename):
     except Exception as e:
         # move file to failed
         print(e)
+        print("moving to failed bucket for checking %s" % (filename,))
+        move_file("foamdino-test", "%s/%s" % (processing_bucket, filename), "foamdino-test", "%s/%s" % (failed_bucket, filename))
+        return
+
+    print("moving to processed bucket %s" % (filename,))
+    move_file("foamdino-test", "%s/%s" % (processing_bucket, filename), "foamdino-test", "%s/%s" % (processed_bucket, filename))
 
 
 # main method for testing outside of lambda environment

@@ -23,6 +23,7 @@ def move_file(src_bucket, src_key, dst_bucket, dst_key):
     s3.copy({'Bucket': src_bucket, 'Key': src_key}, dst_bucket, dst_key)
     s3.delete_object(Bucket=src_bucket, Key=src_key)
 
+
 def publish_total_cleared_delta(total_cleared, initial_mw, dt):
 
     delta = total_cleared - initial_mw
@@ -39,7 +40,7 @@ def publish_total_cleared_delta(total_cleared, initial_mw, dt):
                     }
                 ],
                 'Timestamp': dt,
-                'Value': str(delta)
+                'Value': delta
             }
         ]
     )
@@ -60,16 +61,12 @@ def process_file(filename):
         #D,DISPATCH,OFFERTRK,1,"2017/10/26 00:30:00",SITHE01,ENERGY,"2017/08/01 00:00:00","2017/08/01 02:22:18","2017/10/26 00:25:05"
         #C,"END OF REPORT",6
 
-        initial_mw = None
-        total_cleared = None
+        #initial_mw = None
+        #total_cleared = None
         lines = data.splitlines()
         for l in lines:
-            print(l)
             if l.startswith('D,DISPATCH,UNIT_SOLUTION'):
-                print("here")
                 fields = l.split(",")
-                print(fields[13])
-                print(fields[14])
                 date_str = fields[4].replace('"', '')
                 #this is the correct code, but sample files
                 #dt = datetime.strptime(date_str, '%Y/%m/%d %H:%M:%S')
@@ -93,7 +90,7 @@ def process_file(filename):
         move_file("foamdino-test", "%s/%s" % (processing_bucket, filename), "foamdino-test", "%s/%s" % (failed_bucket, filename))
         return
 
-
+    print("moving to processed bucket %s" % (filename,))
     move_file("foamdino-test", "%s/%s" % (processing_bucket, filename), "foamdino-test", "%s/%s" % (processed_bucket, filename))
 
 
