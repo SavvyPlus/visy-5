@@ -1,10 +1,10 @@
 import boto3
 
 
-from datetime import datetime
+from datetime import datetime, time
 s3 = boto3.client('s3')
 cloudwatch = boto3.client('cloudwatch', region_name='ap-southeast-2')
-
+sns = boto3.client('sns')
 
 conformance_file_prefix = 'SITHE_DISPATCH_CONFORMANCE_'
 
@@ -12,6 +12,10 @@ input_bucket = 'visy-5-input'
 processing_bucket = 'visy-5-processing'
 processed_bucket = 'visy-5-processed'
 failed_bucket = 'visy-5-failed'
+
+conformance_topic = 'arn:aws:sns:ap-southeast-2:547051082101:visy-5-min-conformance-alerts'
+alert_start_time = time(8,0,0)
+alert_end_time = time(18,0,0)
 
 def create_s3_key(dt=datetime.now()):
     """
@@ -55,6 +59,23 @@ def publish_conformance_data(conformance_val, conformance_dt, conformance, messa
     )
 
 
+def should_publish_alert(now = datetime.now().time()):
+    """
+    Returns True if an alert should be published on the SNS topic
+    """
+    return alert_start_time <= now <= alert_end_time
+
+
+def publish_alert(conformance_dt, conformance, message):
+    """
+    Publish alert to SNS topic
+    """
+    sns.publish(
+        TopicArn = conformance_topic,
+        Message = 'Non-conformance [%s] at [%s], message [%s]' % (conformance, conformance_dt, message)
+    )
+
+
 def process_file(filename):
     # move file from input to processing
     try:
@@ -85,6 +106,8 @@ def process_file(filename):
                     conformance_val = 0
                 else:
                     conformance_val = 1
+                    if should_publish_alert():
+                        publish_alert(conformance_dt, conformance)
 
         publish_conformance_data(conformance_val, conformance_dt, conformance, message)
 

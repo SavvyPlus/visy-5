@@ -1,8 +1,9 @@
 import boto3
 
-from datetime import datetime
+from datetime import datetime, time
 s3 = boto3.client('s3')
 cloudwatch = boto3.client('cloudwatch', region_name='ap-southeast-2')
+sns = boto3.client('sns')
 
 total_cleared_file_prefix = 'SITHE_DISPATCHIS_'
 
@@ -10,6 +11,10 @@ input_bucket = 'visy-5-input'
 processing_bucket = 'visy-5-processing'
 processed_bucket = 'visy-5-processed'
 failed_bucket = 'visy-5-failed'
+
+total_topic= 'arn:aws:sns:ap-southeast-2:547051082101:visy-5-min-total-cleared-alerts'
+alert_start_time = time(8,0,0)
+alert_end_time = time(18,0,0)
 
 def create_s3_key(dt=datetime.now()):
     """
@@ -43,6 +48,23 @@ def publish_total_cleared_delta(total_cleared, initial_mw, dt):
                 'Value': delta
             }
         ]
+    )
+
+
+def should_publish_alert(now = datetime.now().time()):
+    """
+    Returns True if an alert should be published to an SNS topic
+    """
+    return alert_start_time <= now <= alert_end_time
+
+
+def publish_alert(dt, total_cleared, initial_value):
+    """
+    Publish alert to SNS topic
+    """
+    sns.publish(
+        TopicArn = total_topic,
+        Message = 'TotalCleared [%s] does not equal InitialMW [%s] at [%s]' % (total_cleared, initial_value, dt)
     )
 
 
