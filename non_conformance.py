@@ -137,7 +137,6 @@ if __name__ == '__main__':
 
 
 def lambda_handler(event, context):
-     # call create_s3_key with no value
     create_s3_key()
 
     # call create_s3_key with a value
@@ -145,4 +144,9 @@ def lambda_handler(event, context):
     dt = datetime.strptime(in_date, '%Y/%m/%d %H:%M:%S')
     create_s3_key(dt)
 
-    process_file("test-file")
+    print("Object added to: [%s]" % (event['Records'][0]['s3']['bucket']['name'],))
+    filename = event['Records'][0]['s3']['object']['key'].split('/')[-1]
+    print(filename)
+
+    #process_file("test-file")
+    process_file(filename)
