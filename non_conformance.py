@@ -134,3 +134,15 @@ if __name__ == '__main__':
     create_s3_key(dt)
 
     process_file("test-file")
+
+
+def lambda_handler(event, context):
+     # call create_s3_key with no value
+    create_s3_key()
+
+    # call create_s3_key with a value
+    in_date = "2017/10/26 20:40:00"
+    dt = datetime.strptime(in_date, '%Y/%m/%d %H:%M:%S')
+    create_s3_key(dt)
+
+    process_file("test-file")
